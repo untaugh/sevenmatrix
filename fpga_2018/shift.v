@@ -8,29 +8,32 @@
 module spi_shift(
 	input clk,
 	input [7:0] counter,
+	input [31:0] frames,
 	output spi_cs, 
 	output spi_sck,
 	output spi_si, 
 	input spi_so,
-	output [`DATA_SIZE-1:0] data,
-	output [12:0] dram_address,
-	inout [15:0] dram_data,
-	output dram_cke,
-	output dram_clk,
-	output dram_wren,
-	output dram_cs,
-	output dram_cas,
-	output dram_ras,
-	output [1:0] dram_bdm,
-	output [1:0] dram_ba
+	output [`DATA_SIZE-1:0] data
+	//output [12:0] dram_address,
+	//inout [15:0] dram_data,
+	//output dram_cke,
+	//output dram_clk,
+	//output dram_wren,
+	//output dram_cs,
+	//output dram_cas,
+	//output dram_ras,
+	//output [1:0] dram_bdm,
+	//output [1:0] dram_ba
 	);
 
+reg accumulate;
 reg [30:0] Q;
 reg [31:0] cmd;
 wire trig;
 reg oneframe;
+//reg accumulate;
 
-spi_shift_mem ss(clk, trig, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
+spi_shift_mem ss(clk, trig, accumulate, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
 
 //assign trig = (counter==0)? Q[20:0] == 21'hFFFFFFFF : Q[27:0] == 28'hFFFFFFFF;
 assign trig = Q[20:0] == 21'hFFFFFFFF;
@@ -65,6 +68,7 @@ endmodule
 module spi_shift_mem(
 	input clk,
 	input trig,
+	input accumulate,
 	output reg [`DATA_SIZE-1:0] data,
 	input [31:0] cmd,
 	output spi_sck,
@@ -117,7 +121,8 @@ module spi_shift_mem(
 
 	always@(posedge clk) begin
 		if (state == `STATE_DATA) begin
-			data <= { data[`DATA_SIZE-2:0], so};
+			if (accumulate) data <= { data[`DATA_SIZE-2:0], (so | data[`DATA_SIZE-1])};
+			else data <= { data[`DATA_SIZE-2:0], so};
 		end
 	end
 	

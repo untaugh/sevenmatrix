@@ -1,50 +1,3 @@
-//module sm_spimem(
-	
-//);
-
-//endmodule
-
-
-module sm_memory(clk, mem_waddr, mem_wdata, mem_raddr, mem_rdata);
-	input clk;
-	input [5:0] mem_waddr;
-	input [3:0] mem_wdata;
-	input [9:0] mem_raddr;
-	output [3:0] mem_rdata;
-	reg [3:0] mem [0:1023];
-	reg [30:0] Q;
-	reg [3:0] mem_data_out;
-	integer i, j;
-
-	assign mem_rdata = mem_data_out;
-
-	initial
-	begin
-	Q = 31'h0;
-	for (i=0; i<1024; i = i + 1'b1)
-		begin
-		j = (i%64 < 32) ? (i%32/2) : 15-(i%32/2);
-		mem[i] = j;// + (i/64);
-		end
-	end
-
-	always@(negedge clk)
-	begin
-		Q <= Q + 1'b1;
-		mem_data_out <= mem[mem_raddr];
-	end
-
-	always@(posedge Q[16])
-	begin
-	for (i=0; i<1024; i = i + 1'b1)
-		begin
-		//mem[i] <= mem[i] + 1'b1;
-		mem[(i+1)%1024] <= mem[i];
-		
-		end
-	end
-endmodule
-
 //module sm_numbers(clk,clk_data,mem_waddr,mem_wdata);
 //	input clk;
 //	reg [23:0] Q;
@@ -109,6 +62,10 @@ endmodule
 //	
 //endmodule
 
+`define HOUR_OFFSET 2
+`define MINUTE_OFFSET 14
+`define SECOND_OFFSET 14
+
 
 module SevenMatrix(
 		input button0, button1,
@@ -121,26 +78,17 @@ module SevenMatrix(
 	output spi_sck,
 	output spi_cs); //,mem_addr,mem_data);
 
-	reg [23:0] Q; // Counter divider. 
+	reg [25:0] Q; // Counter divider. 
+	reg [5:0] seconds;
+	reg [5:0] minutes;
+	reg [3:0] hours;
 
 	reg button0_flag, button1_flag;
 	reg [7:0] counter;
-	//reg [5:0] colindex;
-	//reg [3:0] index;
-	//reg [7:0] pixel;
-	//reg [511:0] column;
-
-	//wire [5:0] ledc; // led module counter. 
 	wire [7:0] brig; // brightness
-	//wire [9:0] mem_addr;
-	//wire [3:0] mem_data;
-	//wire [5:0] mem_waddr;
-	//wire [3:0] mem_wdata;
-	//wire clk_data;
-   //reg [7:0] framebuffer [0:1023];
-	//integer frame;
-
 	wire [8192-1:0] data;
+
+	reg [31:0] frames;
 
 	initial
 	begin
@@ -148,27 +96,12 @@ module SevenMatrix(
 	button0_flag = 1'b0;
 	button1_flag = 1'b0;
 	counter = 1'b0;
-	//frame = 0;
-//	column = 512'b1;
-//	column[8*(8*1+1)] = 1;
-//	column[8*(8*2+2)] = 1;
-//	column[8*(8*3+3)] = 1;
-//	column[8*(8*4+4)] = 1;
-//	column[8*(8*5+5)] = 1;
-//	column[8*(8*6+6)] = 1;
-//	column[8*(8*7+7)] = 1;
-
-	//column[503] = 1;
-	//column[495] = 1;
-	//column[496] = 1;
-	//column[511] = 1;
-	//index = 5;
 	end
 
-	//assign spi_clk = clk_50;
-
-	//assign sdi = data[{cols, Q[7:2], 3'h0}+:8] > (127 - 127/(brig+1) + brig/2); // (brig*brig)/255 + 192, //{brig[7:4], 4'h0},
-
+	//assign frames = { hourframe(hours)};
+	//assign frames[7+:8] = minuteframe(minutes);
+	//assign frames[15+:8] = secondframe(seconds);
+	
 	assign sdi = spi_cs && brightness(data[{cols, Q[6:1], 3'h0}+:8], brig);// : brightness(data2[{cols, Q[6:1], 3'h0}+:8], brig);
 
 	assign 	oe = !spi_cs, //Q[20] && Q[19:0] < 16'hFFFF, // > 16'hFFFF, //1'b0, // Enable output.
@@ -177,27 +110,22 @@ module SevenMatrix(
 				le = Q[6:0] == 7'hFE;  // Latch data just before chaning column. 
 
 	assign cols = Q[18:15];
-	//assign clk_prog = clk_50; // Q[20];
 
-	//always@(posedge Q[1]) begin
-	//	colindex <= colindex + 1;
-	//end
+	function [7:0] hourframe(input [3:0] hour);
+		hourframe = hour + `HOUR_OFFSET;
+	endfunction
 
-	//always@(negedge Q[1]) begin
-		//pixel <= data[cols*512+8*Q[7:2]+:8];
-		//pixel <= column[{colindex, 3'h0}+:8];
-		//pixel <= data[{cols, colindex, 3'h0}+:8];
-	//end
+	function [7:0] minuteframe(input [5:0] minute);
+		minuteframe = minute + `MINUTE_OFFSET;
+	endfunction
 
-	//always@(negedge le) begin
-	//index <= Q[19:16];
-	//column <= data[{cols, 9'h0}+:512];
-	//end
+	function [7:0] secondframe(input [5:0] second);
+		secondframe = second + `SECOND_OFFSET;
+	endfunction
 
 	function brightness(
 		input [7:0] pixel,
 		input [7:0] level);
-		//brightness = pixel > 100;
 		if (level & (1<<7)) 			brightness = pixel > 128;
 		else if (level & (1<<6))	brightness = pixel > 64;
 		else if (level & (1<<5))	brightness = pixel > 32;
@@ -208,50 +136,18 @@ module SevenMatrix(
 		else if (level & (1<<0))	brightness = pixel > 1;
 		else brightness = 0;
 
-		//brightness = isbitset(7, pixel);
-		//if (level > 40)		brightness = isbitset(6, pixel);
-		//if (level < 30)		brightness = isbitset(5, pixel);
-		//if (level < 20)		brightness = isbitset(4, pixel);
-		//if (level < 10)		brightness = isbitset(4, pixel);
-		//if (level < 220)		brightness = isbitset(3, pixel);
-		//if (level < 230)		brightness = isbitset(2, pixel);
-		//if (level < 240)		brightness = isbitset(1, pixel);
-		//brightness = isbitset(0, pixel);
-
 	endfunction
-
-//	function isbitset(
-//		input [3:0] bit,
-//		input [7:0] value
-//		);
-//		if (value & (1<<bit)) isbitset = 1'b1;
-//		else isbitset = 1'b0;
-//	endfunction
 	
 	spi_shift ss(
 		.clk(clk_50),
 		.counter(counter),
+		.frames(frames),
 		.spi_cs(spi_cs), 
 		.spi_sck(spi_sck),
 		.spi_si(spi_si), 
 		.spi_so(spi_so),
 		.data(data),
 	);
-	
-//	sm_memory sm1(
-//	.clk (clk_data),
-//	.mem_waddr (mem_waddr),
-//	.mem_wdata (mem_wdata),
-//	.mem_raddr (mem_addr),
-//	.mem_rdata (mem_data)
-//	);
-
-	//sm_numbers sn1(
-	//.clk (clk_prog),
-	//.clk_data (clk_data),
-	//.mem_waddr (mem_waddr),
-	//.mem_wdata (mem_wdata),
-	//);
 
 	always@(posedge Q[0]) begin
 		if (button0 && !button0_flag) button0_flag <= 1'b1;
@@ -265,7 +161,22 @@ module SevenMatrix(
 			if (counter > 0) counter <= counter - 1'b1;
 		end
 	end
-
+	
+	always@(posedge Q[25]) begin // Increment seconds counter. 
+	frames[0+:8] <= minuteframe(hours);
+	frames[7+:8] <= minuteframe(minutes);
+	frames[15+:8] <= minuteframe(seconds);
+		if (seconds >= 59) begin
+			seconds <= 0;
+			if (minutes >= 59) begin
+				minutes <= 0;
+				if (hours >= 11) hours <= 0;
+				else hours = hours + 1'b1;
+			end else minutes = minutes + 1'b1;
+		end else seconds <= seconds + 1'b1;
+	end
+	
+	
 	always@(posedge clk_50) // Increment main counter. 
 	Q <= Q + 1'b1;
 endmodule
