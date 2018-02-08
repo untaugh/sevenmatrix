@@ -3,6 +3,7 @@
 `define STATE_COMMAND 2'b01
 `define STATE_DATA 2'b10
 `define DATA_SIZE 8192
+//`define DATA_SIZE 32
 `define CMD_READ 8'h03
 
 module spi_shift(
@@ -26,37 +27,40 @@ module spi_shift(
 	//output [1:0] dram_ba
 	);
 
-reg accumulate;
+wire accumulate;
 reg [30:0] Q;
 reg [31:0] cmd;
 wire trig;
-reg oneframe;
-//reg accumulate;
+
+reg [1:0] framecounter;
+
+assign accumulate = framecounter > 0;
 
 spi_shift_mem ss(clk, trig, accumulate, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
 
 //assign trig = (counter==0)? Q[20:0] == 21'hFFFFFFFF : Q[27:0] == 28'hFFFFFFFF;
-assign trig = Q[20:0] == 21'hFFFFFFFF;
+assign trig = Q[25:0] == 26'hFFFFFFFF;
 
 initial begin
 cmd = 32'b0;
 Q = 21'b0;
-oneframe = 1'b0;
+framecounter = 1'b0;
 end
 
-always@(negedge Q[20]) begin
+always@(negedge Q[25]) begin
 cmd[31:24] <= `CMD_READ;
 if (counter > 0) begin
-	cmd[18:0] <= (`DATA_SIZE/8) * (counter - 1);
+	cmd[18:0] <= (`DATA_SIZE/8) * frames[(framecounter*8)+:8];
+	//cmd[18:0] <= (`DATA_SIZE/8) * frames[23:16];
+
 end else begin
 	if (cmd[18:0] >= 19'h4ac00) cmd[18:0] <= 0;
 	else cmd[18:0] <= cmd[18:0] + `DATA_SIZE/8;
 end
 
-end
+if (framecounter >= 2) framecounter <= 0;
+else framecounter <= framecounter + 1'b1;
 
-always@(cmd) begin
-	oneframe <= 1'b1;
 end
 
 
@@ -85,7 +89,7 @@ module spi_shift_mem(
 	assign so = spi_so;
 
 	initial begin
-	data = 8'h00;
+	data = 8'h05;
 	state = 2'b00;
 	counter = 16'h0000;
 	spi_cs = 1'b1;
@@ -103,7 +107,7 @@ module spi_shift_mem(
 
 	`STATE_COMMAND: begin
 		counter <= counter + 1'b1;
-		if (counter >= 32 - 1) begin
+		if (counter >= 32 - 0) begin
 			state <= `STATE_DATA;
 			counter <= 0;
 		end
@@ -111,7 +115,7 @@ module spi_shift_mem(
 
 	`STATE_DATA: begin
 		counter <= counter + 1'b1;
-		if (counter >= `DATA_SIZE - 0) begin
+		if (counter >= `DATA_SIZE - 1) begin
 			state <= `STATE_IDLE;
 			spi_cs <= 1'b1;
 		end
@@ -121,46 +125,54 @@ module spi_shift_mem(
 
 	always@(posedge clk) begin
 		if (state == `STATE_DATA) begin
-			if (accumulate) data <= { data[`DATA_SIZE-2:0], (so | data[`DATA_SIZE-1])};
-			else data <= { data[`DATA_SIZE-2:0], so};
+			if (accumulate)
+				data <= { data[`DATA_SIZE-2:0], (so | data[`DATA_SIZE-1])};
+			else
+				data <= { data[`DATA_SIZE-2:0], so };
 		end
 	end
-	
+
 endmodule
 
 
-//module spi_shift_testbench;
-//	reg clk, trig;
-//	wire [`DATA_SIZE-2:0] data;
-//	
-//	wire spi_sck;
-//	wire spi_cs;
-//	wire spi_si;
-//	reg spi_so;
-//	wire [7:0] byte;
-//	reg [31:0] cmd;
-//	wire [7:0] leds;
-//	
-//	spi_shift_mem ssm (clk, trig, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
-//
-//	//spi_shift ss(clk, spi_cs, spi_sck, spi_si, spi_so, leds);
-//	always@(posedge clk) begin
-//	spi_so <= 1'b1; ///~spi_so;
-//	end
-//	
-//	//assign byte = data[63:56];
-//	
-//	initial begin
-//	cmd[31:24] <= `CMD_READ;
-//	cmd[23:0] <= 0;
-//	spi_so = 1'b0;
-//	clk = 1'b0;
-//	trig = 1'b0;
-//	trig <= #5 1'b1;
-//	trig <= #10 1'b0;
-//	
-//	repeat(2000) #1 clk = ~clk;
-//	$stop;
-//	end
-//	
-//endmodule
+module spi_shift_testbench;
+	reg clk, trig;
+	wire [`DATA_SIZE-2:0] data;
+
+	wire spi_sck;
+	wire spi_cs;
+	wire spi_si;
+	reg spi_so;
+	wire [7:0] byte;
+	reg [31:0] cmd;
+	wire [7:0] leds;
+	reg accumulate;
+
+	spi_shift_mem ssm (clk, trig, accumulate, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
+
+	always@(posedge clk) begin
+	//spi_so <= 1'b1; ///~spi_so;
+	end
+
+	initial begin
+	cmd[31:24] <= `CMD_READ;
+	cmd[23:0] <= 0;
+
+	spi_so = 1'b0;
+	clk = 1'b0;
+	trig = 1'b0;
+	trig <= #5 1'b1;
+	trig <= #10 1'b0;
+	
+	repeat(256) #1 clk = ~clk;
+	
+	trig <= #5 1'b1;
+	trig <= #10 1'b0;
+	
+	repeat(256) #1 clk = ~clk;
+
+
+	$stop;
+	end
+	
+endmodule
