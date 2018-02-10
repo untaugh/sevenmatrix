@@ -1,5 +1,4 @@
 `define STATE_IDLE 2'b00
-`define STATE_INIT 2'b11
 `define STATE_COMMAND 2'b01
 `define STATE_DATA 2'b10
 `define DATA_SIZE 8192
