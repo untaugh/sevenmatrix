@@ -193,16 +193,11 @@ class display:
         for seg in self.segments:
             byte = int(seg.getBrightness()*255)
             data.append(byte)
-        list(reversed(data))
+        data.reverse()
         with Path(self.fileBinary).open('ab') as f:
             #print('seg: %d' % len(self.segments))
             print('Writing %d bytes to %s' % (len(data),self.fileBinary))
             f.write(bytes(data))
-
-
-
-#inputfolder = '/home/oscu/sketchbook/cube/cube'
-#outputfolder = '/home/oscu/Projects/SevenMatrix/animate/out0'
 
 if args.d:
     count = 1
