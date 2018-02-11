@@ -12,6 +12,7 @@
 module spi_shift(
 	input clk,
 	input [31:0] frames,
+	input bell,
 	output spi_cs, 
 	output spi_sck,
 	output spi_si, 
@@ -23,18 +24,31 @@ reg [30:0] Q;
 wire [31:0] cmd;
 wire trig;
 wire [3:0] frame;
+reg [13:0] bellcounter;
+reg reset_bell;
 
 spi_shift_mem ss(clk, trig, frame, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
 
-assign trig = Q[24:0] == 25'hFFFFFFFF;
+assign trig = ((bellcounter < 300) ? Q[20:0] == 21'hFFFFFFFF : Q[24:0] == 25'hFFFFFFFF;
 
 initial begin
 Q = 21'b0;
 end
 
 assign cmd[31:24] = `CMD_READ;
-assign cmd[18:0] = (`DATA_SIZE/8) * frames[(frame*8)+:8];
+assign cmd[18:0] = (`DATA_SIZE/8) * ((bellcounter < 300) ? (bellcounter + frames[24+:8]) : (frames[(frame*8)+:8]));
 
+//always@(posedge bell) begin
+//	bellcounter <= 0;
+//end
+
+always@(negedge Q[20]) begin
+	if (bellcounter < 300) begin
+		bellcounter <= bellcounter + 1'b1;
+	end else if (bell) begin
+		bellcounter <= 0;
+	end
+end
 
 //always@(negedge Q[22]) begin
 //cmd[31:24] <= `CMD_READ;

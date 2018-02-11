@@ -1,6 +1,9 @@
 `define HOUR_OFFSET 0
 `define MINUTE_OFFSET 12
 `define SECOND_OFFSET 72
+`define FRAMES_OFFSET 132
+`define FRAMES_NUM 10
+`define FRAMES_PER_BELL 300
 
 /* SevenMatrix 
 	Drives columns and rows on display, with frames
@@ -25,7 +28,8 @@ module SevenMatrix(
 	wire [7:0] brig; // brightness
 	wire [8192-1:0] data;
 
-	reg [31:0] frames;
+	reg [31:0] clockframes;
+	wire bell;
 
 	initial
 	begin
@@ -38,6 +42,7 @@ module SevenMatrix(
 	hours = 0;
 	end
 
+	assign bell = seconds == 6'h00;
 	assign sdi = spi_cs && brightness(data[{cols, Q[6:1], 3'h0}+:8], brig); 
 	assign oe = !spi_cs;
 	assign clk = Q[0]; 
@@ -70,10 +75,11 @@ module SevenMatrix(
 		else if (level & (1<<0))	brightness = pixel > 1;
 		else brightness = 0;
 	endfunction
-	
+
 	spi_shift ss(
 		.clk(clk_50),
-		.frames(frames),
+		.frames(clockframes),
+		.bell(bell),
 		.spi_cs(spi_cs), 
 		.spi_sck(spi_sck),
 		.spi_si(spi_si), 
@@ -94,9 +100,11 @@ module SevenMatrix(
 	end
 
 	always@(posedge Q[25]) begin // Increment seconds counter. 
-	frames[0+:8] <= hourframe(hours);
-	frames[8+:8] <= minuteframe(minutes);
-	frames[16+:8] <= secondframe(seconds);
+	clockframes[0+:8] <= hourframe(hours);
+	clockframes[8+:8] <= minuteframe(minutes);
+	clockframes[16+:8] <= secondframe(seconds);
+	clockframes[24+:8] <= `FRAMES_OFFSET;
+
 		if (seconds >= 59) begin
 			seconds <= 0;
 			if (minutes >= 59) begin
