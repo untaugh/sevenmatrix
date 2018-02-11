@@ -68,7 +68,7 @@ args = parser.parse_args()
 datafile = args.f
 
 class segment:
-    
+
     brightness = 0.0
     count = 0
 
@@ -119,7 +119,7 @@ class segment:
         si = self.getSegmentI()
         posx = self.getModuleX()*modulewidth + segments[si][0] + segment_offs[si][0]
         posy = self.getModuleY()*moduleheight + segments[si][1] + segment_offs[si][1]
-        return (posx, posy)    
+        return (posx, posy)
     def info(self):
         print('Segment: (%d,%d,%d)' % (self.getModuleX(), self.getModuleY(), self.getSegmentI()), end='')
         #print(', Pos: (%f, %f) -> (%f, %f)' % (self.getStart() + self.getEnd()) )
@@ -189,7 +189,7 @@ class display:
     def initBinary(self, name):
         self.fileBinary = name
     def appendBinary(self):
-        data = [] 
+        data = []
         for seg in self.segments:
             byte = int(seg.getBrightness()*255)
             data.append(byte)
@@ -240,57 +240,3 @@ elif args.p:
     writeserial.Program(ser, datafile)
     ser.close()
     exit()
-
-
-d.initBinary('cube.bin')
-for i in range(1,301):
-    img = Image.open('%s/screen-%04d.tif' % (inputfolder, i))
-    d.setImage(img)
-    d.appendBinary()
-    #d.save('%s/%04d' % (outputfolder,i))
-    d.clear()
-    del img
-
-exit()
-
-cube = Image.open('screen-0001.tif')
-shapes = Image.open('shapes.tif')
-grad = Image.open('grad.tif')
-face = Image.open('face.jpg')
-
-d.initBinary('frames2.bin')
-
-d.setImage(Image.open('screen-0001.tif'))
-d.show()
-d.appendBinary()
-d.clear()
-exit()
-d.setImage(face)
-d.show()
-# d.save('face')
-
-d.clear()
-
-#d.setImage(Image.open('testimage0.tif'))
-#d.show()
-#d.save('testimage0')
-
-d.clear()
-
-d.setImage(Image.open('cat.jpg'))
-d.show()
-d.save('cat')
-
-d.clear()
-
-d.setImage(Image.open('testimage1.tif'))
-d.show()
-d.save('testimage1')
-
-# d.clear()
-
-# d.setImage(Image.open('testimage2.tif'))
-# d.show()
-# d.save('testimage2')
-
-#cube.resize()
