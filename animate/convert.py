@@ -176,7 +176,7 @@ class display:
                     dist = sqrt(dx*dx + dy*dy)
                     if dist > 0.0 and dist < 30.0:
                         newbright = setbright1/dist + (setbright2/(dist*dist))
-                        #newbright = min(1.0, newbright)
+                        newbright = min(1.0, newbright)
                         seg.brightness = max(seg.brightness, newbright * a/765.0)
                     #seg.setPixel(x,y,a);
                 #setPixel(x,y,a)
