@@ -82,16 +82,23 @@ class segment:
         #return min(1.0, self.brightness/self.count)
         return min(1.0, self.brightness)
     def setPixelUV(self, u, v, a, ratio=1.0):
-        self.setPixel(displaywidth * u, displayheight * v, a, ratio)
-    def setPixel(self, x, y, a, ratio=1.0):
-        dist = self.getDistance(x, y)
+        self.setPixel(displaywidth * u, displayheight * v, a)
+    def setPixel(self, x, y, a):
+        #dist = self.getDistance(x, y)
+        dx = (self.pos[0] - x)
+        #if (dx > 30): return
+        #if (dx < -30): return
+        dy = (self.pos[1] - y)
+        #if (dy > 30): return
+        #if (dy < -30): return
+        dist = sqrt(dx*dx + dy*dy)
         if dist > 0.0:
-            self.count += 1;
+            #self.count += 1;
             #self.brightness += 1/(self.brightness+0.1) * ratio * (setbright/(dist*dist)) * a
             #self.brightness += (setbright/(dist*dist)) * a
             newbright = setbright1/dist + (setbright2/(dist*dist))
             newbright = min(1.0, setbright0 * newbright)
-            self.brightness = max(self.brightness, newbright * a)
+            self.brightness = max(self.brightness, newbright * a/765.0)
     def getDistance(self, x, y):
         #pos = self.getPos()
         dx = (self.pos[0] - x)
@@ -152,19 +159,29 @@ class display:
     def setImage(self, img):
         new = img.resize((int(displaywidth/1),int(displayheight/1)))
         img = new
-        #ratio = img.width/displaywidth
+        getPixel = img.getpixel
+        #setPixel = self.setPixel
         for x in range(img.width):
-            #print(x)
             for y in range(img.height):
                 pixel = img.getpixel((x,y))
-                #print(pixel)
-                #a = pixel
-                a = pixel[0]/3 + pixel[1]/3 + pixel[2]/3
-                a /= 255.0
-                #a /= ratio
-                self.setPixelUV(x/img.width,y/img.height,a)
-        for seg in self.segments:
-            self.drawSegment(seg)
+                a = pixel[0] + pixel[1] + pixel[2]
+                #a /= 255.0
+                for seg in self.segments:
+                    dx = (seg.pos[0] - x)
+                    if (dx > 30): continue
+                    if (dx < -30): continue
+                    dy = (seg.pos[1] - y)
+                    if (dy > 30): continue
+                    if (dy < -30): continue
+                    dist = sqrt(dx*dx + dy*dy)
+                    if dist > 0.0 and dist < 30.0:
+                        newbright = setbright1/dist + (setbright2/(dist*dist))
+                        #newbright = min(1.0, newbright)
+                        seg.brightness = max(seg.brightness, newbright * a/765.0)
+                    #seg.setPixel(x,y,a);
+                #setPixel(x,y,a)
+
+
     def drawCircle(self,x,y,a):
         r = 0.5*self.scale
         x *= self.scale
@@ -182,6 +199,9 @@ class display:
             start = seg.getStart()
             end = seg.getEnd()
             self.drawLine(start, end, seg.getBrightness())
+    def drawImage(self):
+        for seg in self.segments:
+            self.drawSegment(seg)
     def show(self):
         self.image.show()
     def save(self, name):
@@ -220,6 +240,7 @@ if args.i:
     disp = display(10.0)
     if args.b: disp.initBinary(args.i + '.bin')
     disp.setImage(Image.open(args.i))
+    disp.drawImage()
     disp.show()
     if args.b: disp.appendBinary()
     del disp
