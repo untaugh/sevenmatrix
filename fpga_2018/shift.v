@@ -2,9 +2,14 @@
 `define STATE_COMMAND 2'b01
 `define STATE_DATA 2'b10
 `define DATA_SIZE 8192
+`define FRAME_SIZE_BYTES 1024
+
 //`define DATA_SIZE 32
 `define CMD_READ 8'h03
 `define NUM_FRAMES 3
+`define FRAMES_OFFSET 132
+`define FRAMES_NUM 4
+`define FRAMES_PER_BELL 300
 
 /* spi_shift
 	Interface to memory moduyle. 
@@ -29,14 +34,18 @@ reg reset_bell;
 
 spi_shift_mem ss(clk, trig, frame, data, cmd, spi_sck, spi_cs, spi_si, spi_so);
 
-assign trig = ((bellcounter < 300) ? Q[20:0] == 21'hFFFFFFFF : Q[24:0] == 25'hFFFFFFFF;
+assign trig = ((bellcounter < 300) ? Q[20:0] == 21'hFFFFFFFF : Q[20:0] == 21'hFFFFFFFF);
 
 initial begin
 Q = 21'b0;
 end
 
-assign cmd[31:24] = `CMD_READ;
-assign cmd[18:0] = (`DATA_SIZE/8) * ((bellcounter < 300) ? (bellcounter + frames[24+:8]) : (frames[(frame*8)+:8]));
+assign cmd = readCmd((bellcounter < 300) ? (bellcounter + `FRAMES_OFFSET + `FRAMES_PER_BELL * frames[24+:8]) : (frames[(frame*8)+:8]));
+
+function [31:0] readCmd(input [15:0] frame);
+	readCmd[31:24] = `CMD_READ;
+	readCmd[23:0] = `FRAME_SIZE_BYTES * frame;
+endfunction
 
 //always@(posedge bell) begin
 //	bellcounter <= 0;

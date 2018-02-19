@@ -2,7 +2,7 @@
 `define MINUTE_OFFSET 12
 `define SECOND_OFFSET 72
 `define FRAMES_OFFSET 132
-`define FRAMES_NUM 10
+`define FRAMES_NUM 4
 `define FRAMES_PER_BELL 300
 
 /* SevenMatrix 
@@ -28,8 +28,9 @@ module SevenMatrix(
 	wire [7:0] brig; // brightness
 	wire [8192-1:0] data;
 
-	reg [31:0] clockframes;
+	wire [31:0] clockframes;
 	wire bell;
+	reg [7:0] bellnum;
 
 	initial
 	begin
@@ -40,8 +41,13 @@ module SevenMatrix(
 	seconds = 0;
 	minutes = 0;
 	hours = 0;
+	bellnum = 0;
 	end
 
+	assign clockframes[24+:8] = bellnum;
+	assign clockframes[0+:8] = hourframe(hours);
+	assign clockframes[8+:8] = minuteframe(minutes);
+	assign clockframes[16+:8] = secondframe(seconds);
 	assign bell = seconds == 6'h00;
 	assign sdi = spi_cs && brightness(data[{cols, Q[6:1], 3'h0}+:8], brig); 
 	assign oe = !spi_cs;
@@ -100,13 +106,14 @@ module SevenMatrix(
 	end
 
 	always@(posedge Q[25]) begin // Increment seconds counter. 
-	clockframes[0+:8] <= hourframe(hours);
-	clockframes[8+:8] <= minuteframe(minutes);
-	clockframes[16+:8] <= secondframe(seconds);
-	clockframes[24+:8] <= `FRAMES_OFFSET;
+	//clockframes[0+:8] <= hourframe(hours);
+	//clockframes[8+:8] <= minuteframe(minutes);
+	//clockframes[16+:8] <= secondframe(seconds);
 
-		if (seconds >= 59) begin
+		if (seconds >= 15) begin
 			seconds <= 0;
+			bellnum <= bellnum + 1'b1;
+			if (bellnum >= (`FRAMES_NUM - 1)) bellnum <= 0;
 			if (minutes >= 59) begin
 				minutes <= 0;
 				if (hours >= 11) hours <= 0;
