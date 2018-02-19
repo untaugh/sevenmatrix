@@ -59,10 +59,12 @@ parser = argparse.ArgumentParser(description='Convert and upload frames.')
 parser.add_argument('-v', help='verify', action='store_true')
 parser.add_argument('-p', help='program', action='store_true')
 parser.add_argument('-g', help='generate frames', action='store_true')
-parser.add_argument('-f', help='binary file to program or verify')
+parser.add_argument('-f', help='binary file')
 parser.add_argument('-d', help='directory for batch generate')
 parser.add_argument('-i', help='display image')
 parser.add_argument('-b', help='output binary file', action='store_true')
+parser.add_argument('-B', help='view binary file', action='store_true')
+
 args = parser.parse_args()
 
 datafile = args.f
@@ -75,6 +77,7 @@ class segment:
     def __init__(self, index):
         self.index = int(index)
         self.pos = self.getPos()
+        self.brightness = 0
     def clear(self):
         self.brightness = 0
         self.count = 0
@@ -156,6 +159,11 @@ class display:
     def setPixelUV(self, u,v,a):
         for seg in self.segments:
             seg.setPixelUV(u,v,a);
+    def setBinary(self,file):
+        with Path(file).open('rb') as f:
+            for seg in self.segments:
+                byte = f.read(1)
+                seg.brightness = byte[0]/255.0
     def setImage(self, img):
         new = img.resize((int(displaywidth/1),int(displayheight/1)))
         img = new
@@ -236,6 +244,11 @@ if args.d:
         count += 1
         infile = Path('%s/screen-%04d.tif' % (args.d, count))
     exit()
+if args.B:
+    disp = display(10.0)
+    disp.setBinary(args.f);
+    disp.drawImage()
+    disp.show()
 if args.i:
     disp = display(10.0)
     if args.b: disp.initBinary(args.i + '.bin')
